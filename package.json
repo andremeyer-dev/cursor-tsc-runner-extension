@@ -1,0 +1,185 @@
+{
+  "name": "cursor-tsc-runner-extension",
+  "displayName": "Cursor TSC Runner",
+  "description": "Runs yarn tsc in predefined folders and shows results in a sidebar webview view.",
+  "version": "0.2.10",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/echoes-of-order/echoes-of-order.git"
+  },
+  "license": "MIT",
+  "publisher": "echoes-of-order",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:cursorTscRunner.runTypeChecks",
+    "onView:cursorTscRunner.results"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Cursor TSC Runner",
+      "properties": {
+        "cursorTscRunner.resultsFontSize": {
+          "type": "number",
+          "default": 12,
+          "minimum": 8,
+          "maximum": 24,
+          "description": "Font size in pixels for the TSC Runner results panel."
+        },
+        "cursorTscRunner.targetFolders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "global-backend",
+            "realm-core-backend",
+            "realm-simulation-backend",
+            "sso-backend",
+            "image-server-backend",
+            "realm-gateway-backend",
+            "armory-backend",
+            "tech-admin-backend",
+            "world-authoring-backend",
+            "ai-lab-backend",
+            "landing-backend",
+            "game-ui-backend"
+          ],
+          "description": "Workspace-relative paths (folders) in which `yarn tsc` is run, in order. Unsafe or absolute paths are ignored."
+        },
+        "cursorTscRunner.autoRunOnStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run type checks automatically once when the extension activates."
+        },
+        "cursorTscRunner.autoRunOnRelevantSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically rerun checks when relevant files are saved inside configured target folders."
+        },
+        "cursorTscRunner.maxParallelChecks": {
+          "type": "number",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Maximum number of folders checked in parallel during a full run."
+        },
+        "cursorTscRunner.relevantExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".ts",
+            ".tsx",
+            ".mts",
+            ".cts",
+            ".js",
+            ".jsx",
+            ".mjs",
+            ".cjs",
+            ".d.ts",
+            ".json"
+          ],
+          "description": "File extensions considered relevant for skipUnchangedProjects fingerprinting."
+        },
+        "cursorTscRunner.resultsPanelPaddingY": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 32,
+          "description": "Vertical panel padding in pixels."
+        },
+        "cursorTscRunner.resultsPanelPaddingX": {
+          "type": "number",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 32,
+          "description": "Horizontal panel padding in pixels."
+        },
+        "cursorTscRunner.resultsRowPaddingY": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 24,
+          "description": "Vertical row padding in pixels."
+        },
+        "cursorTscRunner.resultsRowPaddingX": {
+          "type": "number",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 24,
+          "description": "Horizontal row padding in pixels."
+        },
+        "cursorTscRunner.resultsRowGap": {
+          "type": "number",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 32,
+          "description": "Gap between row content and rerun button in pixels."
+        },
+        "cursorTscRunner.resultsRowSpacing": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 24,
+          "description": "Vertical spacing between rows in pixels."
+        },
+        "cursorTscRunner.resultsRowRadius": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 16,
+          "description": "Row corner radius in pixels."
+        },
+        "cursorTscRunner.resultsSpinnerSize": {
+          "type": "number",
+          "default": 10,
+          "minimum": 6,
+          "maximum": 24,
+          "description": "Spinner size in pixels."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "cursorTscRunner.runTypeChecks",
+        "title": "Cursor TSC Runner: Run yarn tsc"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cursorTscRunnerSidebar",
+          "title": "TSC Runner",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cursorTscRunnerSidebar": [
+        {
+          "type": "webview",
+          "id": "cursorTscRunner.results",
+          "name": "Results"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json",
+    "watch": "tsc -watch -p ./tsconfig.json",
+    "package": "vsce package --no-yarn"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.9.3"
+  }
+}
