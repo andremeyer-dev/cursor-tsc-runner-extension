@@ -2,7 +2,7 @@
   "name": "cursor-tsc-runner-extension",
   "displayName": "Cursor TSC Runner",
   "description": "Runs yarn tsc in predefined folders and shows results in a sidebar webview view.",
-  "version": "0.2.10",
+  "version": "0.2.22",
   "repository": {
     "type": "git",
     "url": "https://github.com/echoes-of-order/echoes-of-order.git"
@@ -20,16 +20,39 @@
     "onView:cursorTscRunner.results"
   ],
   "main": "./out/extension.js",
+  "files": [
+    "out/**/*.js",
+    "media",
+    "README.md",
+    "LICENSE"
+  ],
   "contributes": {
     "configuration": {
       "title": "Cursor TSC Runner",
       "properties": {
-        "cursorTscRunner.resultsFontSize": {
+        "cursorTscRunner.autoRunOnStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run type checks automatically once when the extension activates."
+        },
+        "cursorTscRunner.runOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically rerun checks when relevant files are saved inside configured target folders."
+        },
+        "cursorTscRunner.relevantRerunDebounceMs": {
           "type": "number",
-          "default": 12,
-          "minimum": 8,
-          "maximum": 24,
-          "description": "Font size in pixels for the TSC Runner results panel."
+          "default": 800,
+          "minimum": 0,
+          "maximum": 60000,
+          "description": "Debounce delay in milliseconds before rerun after a relevant save."
+        },
+        "cursorTscRunner.maxParallelChecks": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Maximum number of folders checked in parallel during a full run."
         },
         "cursorTscRunner.targetFolders": {
           "type": "array",
@@ -40,34 +63,38 @@
             "global-backend",
             "realm-core-backend",
             "realm-simulation-backend",
+            "admin-frontend",
+            "game-ui-frontend",
             "sso-backend",
             "image-server-backend",
+            "wiki-frontend",
             "realm-gateway-backend",
             "armory-backend",
             "tech-admin-backend",
+            "tech-admin-frontend",
+            "sso-frontend",
+            "landing-frontend",
+            "world-authoring-frontend",
             "world-authoring-backend",
             "ai-lab-backend",
+            "ai-lab-frontend",
             "landing-backend",
-            "game-ui-backend"
+            "game-ui-backend",
+            "tools/coverage-ui",
+            "external-repos/api-client",
+            "external-repos/auth-client",
+            "external-repos/combat-engine",
+            "external-repos/docs",
+            "external-repos/environments",
+            "external-repos/eslint-config",
+            "external-repos/grpc-service",
+            "external-repos/health-contract",
+            "external-repos/movement-engine",
+            "external-repos/pino-ecs-elastic",
+            "external-repos/ui-theme",
+            "external-repos/vitest-config"
           ],
           "description": "Workspace-relative paths (folders) in which `yarn tsc` is run, in order. Unsafe or absolute paths are ignored."
-        },
-        "cursorTscRunner.autoRunOnStart": {
-          "type": "boolean",
-          "default": true,
-          "description": "Run type checks automatically once when the extension activates."
-        },
-        "cursorTscRunner.autoRunOnRelevantSave": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically rerun checks when relevant files are saved inside configured target folders."
-        },
-        "cursorTscRunner.maxParallelChecks": {
-          "type": "number",
-          "default": 1,
-          "minimum": 1,
-          "maximum": 16,
-          "description": "Maximum number of folders checked in parallel during a full run."
         },
         "cursorTscRunner.relevantExtensions": {
           "type": "array",
@@ -86,63 +113,100 @@
             ".d.ts",
             ".json"
           ],
-          "description": "File extensions considered relevant for skipUnchangedProjects fingerprinting."
+          "description": "File extensions considered relevant for save-triggered reruns."
         },
-        "cursorTscRunner.resultsPanelPaddingY": {
+        "cursorTscRunner.resultsFontSize": {
           "type": "number",
-          "default": 2,
+          "default": 12,
+          "minimum": 8,
+          "maximum": 24,
+          "description": "Font size in pixels for the TSC Runner results panel."
+        },
+        "cursorTscRunner.resultPadding": {
+          "type": "number",
+          "default": 0,
           "minimum": 0,
           "maximum": 32,
-          "description": "Vertical panel padding in pixels."
-        },
-        "cursorTscRunner.resultsPanelPaddingX": {
-          "type": "number",
-          "default": 4,
-          "minimum": 0,
-          "maximum": 32,
-          "description": "Horizontal panel padding in pixels."
-        },
-        "cursorTscRunner.resultsRowPaddingY": {
-          "type": "number",
-          "default": 2,
-          "minimum": 0,
-          "maximum": 24,
-          "description": "Vertical row padding in pixels."
-        },
-        "cursorTscRunner.resultsRowPaddingX": {
-          "type": "number",
-          "default": 4,
-          "minimum": 0,
-          "maximum": 24,
-          "description": "Horizontal row padding in pixels."
-        },
-        "cursorTscRunner.resultsRowGap": {
-          "type": "number",
-          "default": 6,
-          "minimum": 0,
-          "maximum": 32,
-          "description": "Gap between row content and rerun button in pixels."
-        },
-        "cursorTscRunner.resultsRowSpacing": {
-          "type": "number",
-          "default": 2,
-          "minimum": 0,
-          "maximum": 24,
-          "description": "Vertical spacing between rows in pixels."
-        },
-        "cursorTscRunner.resultsRowRadius": {
-          "type": "number",
-          "default": 2,
-          "minimum": 0,
-          "maximum": 16,
-          "description": "Row corner radius in pixels."
+          "description": "Padding in pixels for the panel body and each result row."
         },
         "cursorTscRunner.resultsSpinnerSize": {
           "type": "number",
-          "default": 10,
+          "default": 6,
           "minimum": 6,
           "maximum": 24,
           "description": "Spinner size in pixels."
+        },
+        "cursorTscRunner.resultsRowStripeEvenBackground": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for even rows (e.g. hex or rgb). Leave empty for default theming."
+        },
+        "cursorTscRunner.resultsRowStripeOddBackground": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for odd rows. Leave empty for default theming."
+        },
+        "cursorTscRunner.resultsRowBackgroundSuccess": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for successful rows. Leave empty for default."
+        },
+        "cursorTscRunner.resultsRowBackgroundFailed": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for failed rows. Leave empty for default."
+        },
+        "cursorTscRunner.resultsRowBackgroundMissing": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for missing-folder rows. Leave empty for default."
+        },
+        "cursorTscRunner.resultsRowBackgroundIdle": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for idle rows. Leave empty for default."
+        },
+        "cursorTscRunner.resultsRowBackgroundRunning": {
+          "type": "string",
+          "default": "",
+          "description": "Optional CSS background for running rows. Leave empty for default."
+        },
+        "cursorTscRunner.githubToken": {
+          "type": "string",
+          "default": "",
+          "description": "Personal access token for github.com (repo scope for private repos). Optional for public repos; higher API limits with token. Prefer User settings, do not commit."
+        },
+        "cursorTscRunner.githubApiBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub API base URL, e.g. https://api.github.com or https://HOSTNAME/api/v3 for Enterprise. Empty uses https://api.github.com for github.com remotes."
+        },
+        "cursorTscRunner.githubActionsRefreshMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 15000,
+          "maximum": 3600000,
+          "description": "How often to refresh GitHub Actions status in the results panel (milliseconds)."
+        },
+        "cursorTscRunner.githubCiWorkflowPath": {
+          "type": "string",
+          "default": ".github/workflows/ci.yml",
+          "description": "Repository-relative path of the GitHub Actions workflow used for per-folder CI bubbles (jobs named eo-ci|row|segment|slug). If the workflow is missing, the extension falls back to the latest run of any workflow."
+        },
+        "cursorTscRunner.githubCiAdditionalWorkflowPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".github/workflows/helm-chart.yml"
+          ],
+          "description": "More repository-relative workflow paths (same repo as workspace root only). Shown in Main CI (non-folder jobs) alongside githubCiWorkflowPath. Omit or set to [] to disable. Duplicates of the primary path are ignored."
+        },
+        "cursorTscRunner.githubCiDebug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Log merged GitHub Actions job names to the Cursor TSC Runner output channel (for troubleshooting per-folder CI bubbles)."
         }
       }
     },
@@ -174,7 +238,7 @@
   "scripts": {
     "build": "tsc -p ./tsconfig.json",
     "watch": "tsc -watch -p ./tsconfig.json",
-    "package": "vsce package --no-yarn"
+    "package": "vsce package --no-yarn --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
