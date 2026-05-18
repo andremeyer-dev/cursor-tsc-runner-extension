@@ -2,7 +2,7 @@
   "name": "cursor-tsc-runner-extension",
   "displayName": "Cursor TSC Runner",
   "description": "Runs yarn tsc in predefined folders and shows results in a sidebar webview view.",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "repository": {
     "type": "git",
     "url": "https://github.com/echoes-of-order/echoes-of-order.git"
@@ -174,7 +174,12 @@
         "cursorTscRunner.githubToken": {
           "type": "string",
           "default": "",
-          "description": "Personal access token for github.com (repo scope for private repos). Optional for public repos; higher API limits with token. Prefer User settings, do not commit."
+          "description": "Personal access token inline. Prefer githubTokenFile (e.g. .docker/devcontainer/github-token); do not commit tokens in workspace settings."
+        },
+        "cursorTscRunner.githubTokenFile": {
+          "type": "string",
+          "default": ".docker/devcontainer/github-token",
+          "description": "Workspace-relative path to a file with one PAT per line (comments with # allowed). Falls back to npm-auth-token and github-token in .docker/devcontainer when empty or missing."
         },
         "cursorTscRunner.githubApiBaseUrl": {
           "type": "string",

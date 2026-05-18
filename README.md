@@ -54,7 +54,8 @@ For any target folder where **`.github/workflows`** exists on that folder or a p
 
 Settings:
 
-- `cursorTscRunner.githubToken`: optional; **required for private repos** and recommended for rate limits. Prefer **User** settings and do not commit the token.
+- `cursorTscRunner.githubTokenFile`: workspace-relative PAT file (default `.docker/devcontainer/github-token`, gitignored). Same layout as devcontainer/npm-auth; falls back to `npm-auth-token` in that folder.
+- `cursorTscRunner.githubToken`: optional inline override; do not commit in `.vscode/settings.json`.
 - `cursorTscRunner.githubApiBaseUrl`: optional override, e.g. `https://api.github.com` or `https://HOSTNAME/api/v3` for Enterprise. If empty, **github.com** remotes use `https://api.github.com`; other hosts default to `https://<host>/api/v3`.
 - `cursorTscRunner.githubActionsRefreshMs`: polling interval for refreshing CI bubbles (default 120000 ms).
 

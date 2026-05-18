@@ -1,5 +1,5 @@
 import { exec, execFile } from "node:child_process";
-import { constants as fsConstants } from "node:fs";
+import { constants as fsConstants, readFileSync } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import * as path from "node:path";
 import { promisify } from "node:util";
@@ -138,7 +138,9 @@ const rowBgMissingKey = "resultsRowBackgroundMissing";
 const rowBgIdleKey = "resultsRowBackgroundIdle";
 const rowBgRunningKey = "resultsRowBackgroundRunning";
 const githubTokenKey = "githubToken";
+const githubTokenFileKey = "githubTokenFile";
 const githubApiBaseUrlKey = "githubApiBaseUrl";
+let resolvedGithubTokenCache = "";
 const githubActionsRefreshMsKey = "githubActionsRefreshMs";
 const githubCiWorkflowPathKey = "githubCiWorkflowPath";
 const githubCiAdditionalWorkflowPathsKey = "githubCiAdditionalWorkflowPaths";
@@ -394,9 +396,70 @@ function resolveGithubApiBaseUrl(host: string, configuredOverride: string): stri
   return `https://${host}/api/v3`;
 }
 
+function readGithubTokenFromFile(absPath: string): string {
+  try {
+    const raw = readFileSync(absPath, "utf8");
+    const first = raw
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find((line) => line.length > 0 && !line.startsWith("#"));
+    return first ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function getGithubTokenFileSetting(): string {
+  const raw = vscode.workspace.getConfiguration(configSection).get<string>(githubTokenFileKey);
+  if (typeof raw !== "string") {
+    return ".docker/devcontainer/github-token";
+  }
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : ".docker/devcontainer/github-token";
+}
+
+function resolveGithubTokenFromWorkspaceFiles(): string {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    return "";
+  }
+  const root = workspaceFolder.uri.fsPath;
+  const configuredRel = getGithubTokenFileSetting();
+  const candidates = [
+    path.isAbsolute(configuredRel) ? configuredRel : path.join(root, configuredRel),
+    path.join(root, ".docker/devcontainer/npm-auth-token"),
+    path.join(root, ".docker/devcontainer/github-token"),
+  ];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const normalized = path.normalize(candidate);
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    const token = readGithubTokenFromFile(normalized);
+    if (token.length > 0) {
+      return token;
+    }
+  }
+  return "";
+}
+
 function getGithubToken(): string {
   const raw = vscode.workspace.getConfiguration(configSection).get<string>(githubTokenKey);
-  return typeof raw === "string" ? raw.trim() : "";
+  const inline = typeof raw === "string" ? raw.trim() : "";
+  if (inline.length > 0) {
+    return inline;
+  }
+  if (resolvedGithubTokenCache.length > 0) {
+    return resolvedGithubTokenCache;
+  }
+  resolvedGithubTokenCache = resolveGithubTokenFromWorkspaceFiles();
+  return resolvedGithubTokenCache;
+}
+
+function clearGithubTokenCache(): void {
+  resolvedGithubTokenCache = "";
 }
 
 function getGithubApiBaseUrl(): string {
@@ -480,7 +543,7 @@ async function githubApiGet(
         status: res.status,
         detail:
           res.status === 401 || res.status === 403
-            ? `HTTP ${String(res.status)}: set cursorTscRunner.githubToken for private repos.`
+            ? `HTTP ${String(res.status)}: set cursorTscRunner.githubTokenFile (e.g. .docker/devcontainer/github-token) for private repos.`
             : `HTTP ${String(res.status)}: ${text.slice(0, 200)}`
       };
     }
@@ -2291,6 +2354,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event: vscode.ConfigurationChangeEvent) => {
       if (event.affectsConfiguration(configSection)) {
+        if (
+          event.affectsConfiguration(`${configSection}.${githubTokenKey}`) ||
+          event.affectsConfiguration(`${configSection}.${githubTokenFileKey}`)
+        ) {
+          clearGithubTokenCache();
+        }
         if (
           event.affectsConfiguration(`${configSection}.${githubCiWorkflowPathKey}`) ||
           event.affectsConfiguration(`${configSection}.${githubCiAdditionalWorkflowPathsKey}`)
